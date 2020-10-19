@@ -1,1 +1,1 @@
-# flask_shop_rest_app
+# Flask REST API
