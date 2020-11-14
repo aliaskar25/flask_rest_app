@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from flask_jwt import jwt_required
+from flask_jwt_extended import jwt_required
 
 from models.item import ItemModel
 
@@ -10,14 +10,14 @@ class Item(Resource):
     parser.add_argument('price', type=float, required=True, help='required field')
     parser.add_argument('store_id', type=int, required=True, help='required field')
 
-    # @jwt_required()
+    # @jwt_required
     def get(self, id):
         item = ItemModel.find_by_id(id)
         if item:
             return {'id': item.id, 'name': item.name, 'price': item.price}
         return {'message': 'not found'}, 404
 
-    # @jwt_required()
+    # @jwt_required
     def put(self, id):
         data = Item.parser.parse_args()
         item = ItemModel.find_by_id(id)
@@ -38,7 +38,7 @@ class Item(Resource):
             return {'smth went wrong'}, 500
         return item, 201
             
-    # @jwt_required()
+    # @jwt_required
     def delete(self, id):
         item = ItemModel.find_by_id(id)
         if item:
@@ -54,7 +54,7 @@ class ItemList(Resource):
     parser.add_argument('store_id', type=int, required=True, help='required field')
 
     def get(self):
-        return [item.json() for item in ItemModel.query.all()], 200
+        return [item.json() for item in ItemModel.find_all()], 200
 
     def post(self):
         data = ItemList.parser.parse_args()

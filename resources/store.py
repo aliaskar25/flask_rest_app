@@ -1,5 +1,13 @@
 from flask_restful import Resource, reqparse
 
+from flask_jwt_extended import (
+    get_jwt_claims, 
+    jwt_required, 
+    jwt_optional, 
+    get_jwt_identity, 
+    fresh_jwt_required
+)
+
 from models.store import StoreModel
 
 
@@ -22,7 +30,11 @@ class Store(Resource):
             return updated_store, 200
         return StoreModel(**data).save_to_db(), 201
     
+    @jwt_required
     def delete(self, id):
+        claims = get_jwt_claims()
+        if not claims['is_admin']:
+            return {'message': 'Admin required'}, 401
         store = StoreModel.find_by_id(id)
         if store:
             store.delete_from_db()
@@ -34,9 +46,17 @@ class StoreList(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('name', type=str, required=True, help='required field')
 
+    @jwt_optional
     def get(self):
-        return [store.json() for store in StoreModel.query.all()]
+        user_id = get_jwt_identity()
+        if user_id:
+            return [store.json() for store in StoreModel.find_all()], 200
+        return {
+            'items': [store.name for store in StoreModel.find_all()],
+            'message': "More data can be show if login"
+        }, 200
 
+    @fresh_jwt_required
     def post(self):
         data = Store.parser.parse_args()
         if StoreModel.find_by_name(data['name']):
