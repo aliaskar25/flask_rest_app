@@ -11,14 +11,14 @@ class Item(Resource):
     parser.add_argument('store_id', type=int, required=True, help='required field')
 
     # @jwt_required
-    def get(self, id):
+    def get(self, id: int):
         item = ItemModel.find_by_id(id)
         if item:
             return {'id': item.id, 'name': item.name, 'price': item.price}
         return {'message': 'not found'}, 404
 
     # @jwt_required
-    def put(self, id):
+    def put(self, id: int):
         data = Item.parser.parse_args()
         item = ItemModel.find_by_id(id)
         if item:
@@ -39,7 +39,7 @@ class Item(Resource):
         return item, 201
             
     # @jwt_required
-    def delete(self, id):
+    def delete(self, id: int):
         item = ItemModel.find_by_id(id)
         if item:
             item.delete_from_db()

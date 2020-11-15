@@ -28,23 +28,13 @@ api = Api(app)
 
 jwt = JWTManager(app)
 
-@jwt.user_claims_loader
-def add_claims_to_jwt(identity):
-    if identity == 1:
-        return {'is_admin': True}
-    return {'is_admin': False}
+# @jwt.user_claims_loader # claims some info to check in resources
 
 @jwt.token_in_blacklist_loader
 def check_token_blacklist(decrypted_token):
     return decrypted_token['jti'] in BLACKLIST
 
-@jwt.expired_token_loader
-def expired_token_callback():
-    return {
-        'description': 'Token has expired',
-        'error': 'token_expired'
-    }, 401
-
+# @jwt.expired_token_loader
 # @jwt.invalid_token_loader
 # @jwt.unauthorized_loader
 # @jwt.needs_fresh_token_loader
