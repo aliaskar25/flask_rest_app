@@ -1,6 +1,5 @@
-import sqlite3
-
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
+from flask import request
 from flask_jwt_extended import (
     jwt_required, 
     create_access_token,
@@ -10,29 +9,28 @@ from flask_jwt_extended import (
     get_raw_jwt, 
 )
 
+from marshmallow import ValidationError
+
 from werkzeug.security import safe_str_cmp
 
 from models.user import UserModel
 
+from schemas.user import UserSchema
+
 from blacklist import BLACKLIST
 
 
-_user_parser = reqparse.RequestParser()
-_user_parser.add_argument('username', type=str, required=True, help='required field')
-_user_parser.add_argument('password', type=str, required=True, help='required field')
+user_schema = UserSchema()
 
 
 class UserRegister(Resource):
     def post(self):
-        data = _user_parser.parse_args()
-        user = UserModel.find_by_username(data['username'])
-        if user:
-            return {'message': 'already exists'}, 400
-            
-        user = UserModel(**data)
-        user.save_to_db()
-
-        return {'message': 'User created successfuly.'}, 201
+        user_data = user_schema.load(request.get_json())
+        user = UserModel.find_by_username(user_data.username)
+        if not user:
+            user = user_data.save_to_db()
+            return user_schema.dump(user), 201
+        return {'message': 'already exists'}, 400
 
 
 class User(Resource):
@@ -41,7 +39,7 @@ class User(Resource):
         user = UserModel.find_by_id(user_id)
         if not user:
             return {'message': 'User not found'}, 404
-        return user.json()
+        return user_schema.dump(user), 200
 
     @classmethod
     def delete(cls, user_id: int):
@@ -54,9 +52,9 @@ class User(Resource):
 
 class UserLogin(Resource):
     def post(self):
-        data = _user_parser.parse_args()
-        user = UserModel.find_by_username(data['username'])
-        if user and safe_str_cmp(user.password, data['password']):
+        user_data = user_schema.load(request.get_json())
+        user = UserModel.find_by_username(user_data.username)
+        if user and safe_str_cmp(user.password, user_data.password):
             access_token = create_access_token(identity=user.id, fresh=True)
             refresh_token = create_refresh_token(user.id)
             return {
@@ -78,5 +76,5 @@ class TokenRefresh(Resource):
     @jwt_refresh_token_required
     def post(self):
         current_user = get_jwt_identity()
-        new_token = create_access_token(identity=current_user, fresh=False)
+        new_token = create_access_token(identity=current_user, fresh=True)
         return {'access_token': new_token}, 200
