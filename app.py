@@ -1,9 +1,12 @@
 import os
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
 
+from marshmallow import ValidationError
+
+from ma import ma
 from db import db
 from resources.user import (
     UserRegister, User, 
@@ -46,17 +49,23 @@ def create_tables():
     db.create_all()
 
 
-api.add_resource(Item, '/items/<int:id>')
-api.add_resource(ItemList, '/items')
+@app.errorhandler(ValidationError) # Handle serializator errors (make code without try)
+def handle_marshmallow_validation(err):
+    return jsonify(err.messages), 400
+
+
 api.add_resource(UserRegister, '/register')
-api.add_resource(Store, '/stores/<int:id>')
-api.add_resource(StoreList, '/stores')
 api.add_resource(User, '/users/<int:user_id>')
 api.add_resource(UserLogin, '/login')
 api.add_resource(TokenRefresh, '/refresh')
 api.add_resource(UserLogout, '/logout')
+api.add_resource(Item, '/items/<int:id>')
+api.add_resource(ItemList, '/items')
+api.add_resource(Store, '/stores/<int:id>')
+api.add_resource(StoreList, '/stores')
 
 
 if __name__ == "__main__":
     db.init_app(app)
+    ma.init_app(app)
     app.run(port=5000, debug=True)

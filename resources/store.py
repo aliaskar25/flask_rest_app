@@ -1,52 +1,53 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 
-from flask_jwt_extended import (
-    jwt_required, 
-    fresh_jwt_required
-)
+from flask import request
+
+from flask_jwt_extended import jwt_required
+
+from marshmallow import ValidationError
+
+from schemas.store import StoreSchema
 
 from models.store import StoreModel
 
 
-class Store(Resource):
-    parser = reqparse.RequestParser()
-    parser.add_argument('name', type=str, required=True, help='required field')
+store_schema = StoreSchema()
+store_list_schema = StoreSchema(many=True)
 
+
+class Store(Resource):
     def get(self, id: int):
         store = StoreModel.find_by_id(id)
-        if store:
-            return store.json(), 200
-        return {'message': 'not found'}, 404
+        if not store:
+            return {'message': 'not found'}, 404
+        return store_schema.dump(store), 200
 
+    @jwt_required
     def put(self, id: int):
-        data = Store.parser.parse_args()
+        new_store = store_schema.load(request.get_json())
         store = StoreModel.find_by_id(id)
-        if store:
-            store.name = data['name']
-            updated_store = store.save_to_db()
-            return updated_store, 200
-        return StoreModel(**data).save_to_db(), 201
-    
+        if not store:
+            return store_schema.dump(new_store.save_to_db()), 201
+        store.title = new_store.title
+        return store_schema.dump(store.save_to_db()), 200
+
     @jwt_required
     def delete(self, id: int):
         store = StoreModel.find_by_id(id)
-        if store:
-            store.delete_from_db()
-            return {'message': 'deleted'}, 204
-        return {'message': 'not found'}, 404
-
+        if not store:
+            return {'message': 'not found'}, 404
+        store.delete_from_db()
+        return {'message': 'deleted'}, 204
+    
 
 class StoreList(Resource):
-    parser = reqparse.RequestParser()
-    parser.add_argument('name', type=str, required=True, help='required field')
-
     def get(self):
-        return [store.json() for store in StoreModel.find_all()], 200
-        
-    @fresh_jwt_required
-    def post(self):
-        data = Store.parser.parse_args()
-        if StoreModel.find_by_name(data['name']):
-            return {'message': 'already exists'}, 400
+        return {'stores': store_list_schema.dump(StoreModel.find_all())}, 200
 
-        return StoreModel(**data).save_to_db(), 201
+    @jwt_required
+    def post(self):
+        new_store = store_schema.load(request.get_json())
+        store = StoreModel.find_by_title(new_store.title)
+        if not store:
+            return store_schema.dump(new_store.save_to_db()), 201
+        return {'message': 'already exists'}, 400
